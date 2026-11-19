@@ -1,0 +1,50 @@
+# Keith Koki — Executive Portfolio
+# Product Management · Software Engineering · AI Governance Advisory
+
+## About
+Keith Koki is a product-led CTO and ISO/IEC 42001 certified AI governance advisor based in Nairobi, Kenya, operating globally (Tokyo, San Francisco, London, Remote).
+
+## Core Expertise
+- **Product Management**: B2B product strategy & discovery, outcome roadmaps, UX vision & design architecture, metrics/KPIs & growth orchestration
+- **Software Engineering**: Modern frontend (Next.js, TypeScript, React), pragmatic backend systems design, technical delegation & mentorship, engineering squad velocity optimization
+- **AI Governance & Advisory**: ISO/IEC 42001 algorithmic safety, responsible AI advisory for startups, algorithmic risk auditing & bias testing, automated governance & drift observability
+
+## Current Roles
+- CTO @ Qavaeat — Product Engineering & Roadmap Leadership
+- CTO @ Mama Sure — Tech Team Leadership, Design, Product & Scaling
+- Certified ISO/IEC 42001 Lead Assessor — Algorithmic Safety & AI Governance
+
+## Engagement Model
+- Fractional CTO & Product Advisory Retainers
+- ISO/IEC 42001 Algorithmic Compliance Audits
+- Technical Due Diligence for Investors
+- Engineering Team Transformation & Scaling
+- Speaking: Conferences, Workshops, Podcasts
+
+## Contact
+- Email: kokikeith@gmail.cm
+- LinkedIn: https://www.linkedin.com/in/keith-koki-669782240/
+- GitHub: https://github.com/Keith-koki77/
+- X: https://x.com/KeithKoki3980
+- Substack: https://substack.com/@keithkoki
+
+## Key Pages
+- Home: https://keithkoki.com/
+- Advisory Services: https://keithkoki.com/advisory
+- Product Management: https://keithkoki.com/product-management
+- Software Engineering: https://keithkoki.com/engineering
+- AI Governance: https://keithkoki.com/ai-governance
+- Selected Works: https://keithkoki.com/works
+- Strategic Pillars: https://keithkoki.com/pillars
+- Speaking: https://keithkoki.com/speaking
+- Contact: https://keithkoki.com/contact
+- Blog: https://keithkoki.com/blogs
+
+## Keywords
+AI governance, ISO 42001, AI revolution, AI in organizations, AI advisory, AI integration into businesses, Product Management, Product Leadership, Design Thinking, AI Consulting
+
+## Robots Policy
+User-agent: *
+Allow: /
+Disallow: /studio/, /api/, /_next/, /static/, /private/
+Sitemap: https://keithkoki.com/sitemap.xml

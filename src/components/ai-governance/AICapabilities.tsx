@@ -1,0 +1,89 @@
+'use client'
+
+import { ShieldIcon, CodeIcon, TargetIcon, UsersIcon, LayersIcon, ZapIcon } from '@/components/Icons'
+import { aiCapabilities } from '@/data/ai-governance/capabilities'
+
+const capabilityIcons: Record<string, React.ElementType> = {
+  'governance-systems': ShieldIcon,
+  'responsible-ai': UsersIcon,
+  'strategy-adoption': TargetIcon,
+  'implementation': CodeIcon,
+  'product-innovation': LayersIcon,
+  'transformation': ZapIcon,
+}
+
+export function AICapabilities() {
+  return (
+    <section
+      id="capabilities"
+      className="py-20 lg:py-32 bg-ivory-silk"
+      aria-labelledby="capabilities-heading"
+    >
+      <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="max-w-3xl mb-16 lg:mb-24 animate-fade-in-up">
+          <p className="overline text-ochre-brushed mb-4 uppercase tracking-wider">
+            AI Governance & Responsible AI Capabilities
+          </p>
+          <h2
+            id="capabilities-heading"
+            className="font-display font-semibold text-[clamp(2.5rem,5vw,3.5rem)] leading-tight text-aubergine-deep mb-6 text-balance"
+          >
+            Structured capabilities across governance, strategy, implementation, and transformation.
+          </h2>
+        </div>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8" role="list" aria-label="AI capabilities">
+          {aiCapabilities.map((capability) => {
+            const Icon = capabilityIcons[capability.id]
+            return (
+              <article
+                key={capability.id}
+                className="relative group rounded-xl p-6 lg:p-8 transition-luxury bg-ivory-silk border border-hairline-light hover:border-ochre-brushed/50 hover:bg-ivory-light overflow-hidden"
+                role="listitem"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-ochre-champagne/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-luxury" aria-hidden="true" />
+                <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-ochre-hairline/30 to-transparent" aria-hidden="true" />
+
+                <div className="relative z-10 space-y-6 h-full flex flex-col">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-aubergine-deep text-ochre-brushed group-hover:bg-ochre-brushed group-hover:text-aubergine-core transition-luxury">
+                        <Icon className="h-6 w-6" aria-hidden="true" />
+                      </div>
+                      <div>
+                        <p className="overline tabular-nums text-ochre-brushed/80">{capability.number}</p>
+                        <h3 className="font-display font-semibold text-xl text-aubergine-deep group-hover:text-ochre-brushed transition-luxury-fast">
+                          {capability.title}
+                        </h3>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="leading-relaxed flex-1 text-obsidian-text/90 mb-6">
+                    {capability.summary}
+                  </p>
+
+                  <ul className="space-y-2" role="list" aria-label={`${capability.title} focus areas`}>
+                    {capability.skills.map((skill, i) => (
+                      <li
+                        key={i}
+                        className="flex items-start gap-2 px-3 py-1.5 rounded-md bg-ivory-surface border border-hairline-light text-sm text-obsidian-text/80 hover:border-ochre-brushed/50 hover:text-ochre-brushed transition-luxury-fast"
+                        role="listitem"
+                      >
+                        <span
+                          className="flex-shrink-0 h-1.5 w-1.5 rounded-full bg-ochre-brushed/50 group-hover:bg-ochre-brushed transition-luxury-fast"
+                          aria-hidden="true"
+                        />
+                        {skill}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
+}

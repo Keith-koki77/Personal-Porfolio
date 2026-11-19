@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" fill="none">
+  <rect width="800" height="1000" fill="#2A162B"/>
+  <ellipse cx="400" cy="380" rx="180" ry="220" fill="#1D0E1E" stroke="#3E233F" stroke-width="2"/>
+  <ellipse cx="400" cy="320" rx="90" ry="70" fill="#3E233F" opacity="0.3"/>
+  <ellipse cx="360" cy="300" rx="18" ry="22" fill="#C59B27" opacity="0.4"/>
+  <ellipse cx="440" cy="300" rx="18" ry="22" fill="#C59B27" opacity="0.4"/>
+  <path d="M340 370 Q400 420 460 370" stroke="#C59B27" stroke-width="3" fill="none" opacity="0.4"/>
+  <text x="400" y="720" text-anchor="middle" font-family="Playfair Display, serif" font-size="32" font-weight="500" fill="#C59B27" opacity="0.6">PORTRAIT</text>
+  <text x="400" y="760" text-anchor="middle" font-family="Plus Jakarta Sans, sans-serif" font-size="16" fill="#E5DFD5" opacity="0.4">Replace with your portrait photo</text>
+  <text x="400" y="790" text-anchor="middle" font-family="Plus Jakarta Sans, sans-serif" font-size="14" fill="#E5DFD5" opacity="0.3">Recommended: 800x1000px, portrait orientation</text>
+</svg>
