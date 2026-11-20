@@ -1,9 +1,9 @@
 import { client } from '@/sanity/lib/client'
-import imageUrlBuilder, { SanityImageSource } from '@sanity/image-url'
+import { createImageUrlBuilder, type SanityImageSource } from '@sanity/image-url'
 
 export const sanityClient = client
 
-const imageBuilder = imageUrlBuilder({
+const imageBuilder = createImageUrlBuilder({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID!,
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET!,
 })
