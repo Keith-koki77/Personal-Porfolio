@@ -1,9 +1,16 @@
+
 'use client'
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
-import { ArrowRightIcon, CalendarIcon, ClockIcon, ChevronRightIcon, SparklesIcon, ChevronDownIcon } from '@/components/Icons'
+import {
+  ArrowRightIcon,
+  CalendarIcon,
+  ClockIcon,
+  ChevronDownIcon,
+  SparklesIcon,
+} from '@/components/Icons'
 import { sanityClient, urlFor } from '@/lib/sanity'
 
 interface Category {
@@ -18,10 +25,16 @@ interface BlogPost {
   excerpt: string
   publishedAt: string
   updatedAt?: string
-  categories: Array<{ title: string; slug: string }>
+  categories: Array<{
+    title: string
+    slug: string
+  }>
   mainImage?: {
     alt?: string
-    asset?: { _ref?: string; url?: string }
+    asset?: {
+      _ref?: string
+      url?: string
+    }
   }
   author?: {
     name: string
@@ -42,137 +55,246 @@ async function fetchCategories(): Promise<Category[]> {
   )
 }
 
-async function fetchPosts(params: { offset: number; limit: number; categorySlug?: string }): Promise<{ posts: BlogPost[]; total: number }> {
+async function fetchPosts(params: {
+  offset: number
+  limit: number
+  categorySlug?: string
+}): Promise<{ posts: BlogPost[]; total: number }> {
   const { offset, limit, categorySlug } = params
-  
-  const filter = categorySlug ? `&& $categorySlug in categories[].slug.current` : ''
-  
+
+  const filter = categorySlug
+    ? '&& $categorySlug in categories[].slug.current'
+    : ''
+
+  // Fetch the total number of matching posts.
   const total = await sanityClient.fetch<number>(
     `count(*[_type == "post" ${filter}])`,
     { categorySlug }
   )
 
+  // GROQ range end is exclusive.
+  // For example, [0...6] returns six posts.
+  const end = offset + limit
+
   const posts = await sanityClient.fetch<BlogPost[]>(
-    `*[_type == "post" ${filter}] | order(publishedAt desc)[$offset...$limit] {
-      "slug": slug.current,
-      title,
-      excerpt,
-      publishedAt,
-      updatedAt,
-      mainImage {
-        alt,
-        asset
-      },
-      author {
-        name,
-        role,
-        image
-      },
-      categories[] {
+    `*[_type == "post" ${filter}]
+      | order(publishedAt desc)[$offset...$end] {
+        "slug": slug.current,
         title,
-        "slug": slug.current
-      }
-    }`,
-    { offset, limit, categorySlug }
+        excerpt,
+        publishedAt,
+        updatedAt,
+        mainImage {
+          alt,
+          asset
+        },
+        author {
+          name,
+          role,
+          image
+        },
+        categories[] {
+          title,
+          "slug": slug.current
+        }
+      }`,
+    {
+      offset,
+      end,
+      categorySlug,
+    }
   )
 
-  return { posts, total }
+  return {
+    posts: Array.isArray(posts) ? posts : [],
+    total: typeof total === 'number' ? total : 0,
+  }
 }
 
 export default function BlogClient() {
   const [categories, setCategories] = useState<Category[]>([])
   const [posts, setPosts] = useState<BlogPost[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+
   const [loading, setLoading] = useState(false)
   const [loadingCategories, setLoadingCategories] = useState(true)
+
   const [hasMore, setHasMore] = useState(true)
   const [total, setTotal] = useState(0)
   const [loadedCount, setLoadedCount] = useState(0)
 
-  // Fetch categories on mount
+  // Fetch categories once when the component mounts.
   useEffect(() => {
-    fetchCategories()
-      .then((cats) => {
-        setCategories(cats)
-        setLoadingCategories(false)
-      })
-      .catch(() => setLoadingCategories(false))
+    let cancelled = false
+
+    async function loadCategories() {
+      try {
+        const cats = await fetchCategories()
+
+        if (!cancelled) {
+          setCategories(Array.isArray(cats) ? cats : [])
+        }
+      } catch (error) {
+        console.error(
+          '[Sanity] Failed to fetch blog categories:',
+          error
+        )
+
+        if (!cancelled) {
+          setCategories([])
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingCategories(false)
+        }
+      }
+    }
+
+    loadCategories()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  // Fetch initial posts when category changes
+  // Fetch the first page of posts whenever the selected category changes.
   useEffect(() => {
-    setLoading(true)
-    setPosts([])
-    setLoadedCount(0)
-    
-    fetchPosts({ offset: 0, limit: POSTS_PER_LOAD, categorySlug: selectedCategory || undefined })
-      .then(({ posts: fetchedPosts, total: totalCount }) => {
-        setPosts(fetchedPosts)
-        setLoadedCount(fetchedPosts.length)
-        setTotal(totalCount)
-        setHasMore(fetchedPosts.length < totalCount)
-        setLoading(false)
-      })
-      .catch(() => {
-        setLoading(false)
-        setHasMore(false)
-      })
+    let cancelled = false
+
+    async function loadInitialPosts() {
+      setLoading(true)
+      setPosts([])
+      setLoadedCount(0)
+      setTotal(0)
+      setHasMore(true)
+
+      try {
+        const result = await fetchPosts({
+          offset: 0,
+          limit: POSTS_PER_LOAD,
+          categorySlug: selectedCategory || undefined,
+        })
+
+        if (cancelled) return
+
+        setPosts(result.posts)
+        setLoadedCount(result.posts.length)
+        setTotal(result.total)
+        setHasMore(result.posts.length < result.total)
+      } catch (error) {
+        console.error(
+          '[Sanity] Failed to fetch blog posts:',
+          error
+        )
+
+        if (!cancelled) {
+          setPosts([])
+          setLoadedCount(0)
+          setTotal(0)
+          setHasMore(false)
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadInitialPosts()
+
+    return () => {
+      cancelled = true
+    }
   }, [selectedCategory])
 
-  const loadMore = () => {
+  // Fetch the next page of posts.
+  const loadMore = async () => {
     if (loading || !hasMore) return
-    
+
     setLoading(true)
-    
-    fetchPosts({ offset: loadedCount, limit: POSTS_PER_LOAD, categorySlug: selectedCategory || undefined })
-      .then(({ posts: newPosts, total: totalCount }) => {
-        setPosts((prevPosts) => [...prevPosts, ...newPosts])
-        setLoadedCount((prevLoaded) => prevLoaded + newPosts.length)
-        setHasMore(loadedCount + newPosts.length < totalCount)
-        setLoading(false)
+
+    try {
+      const result = await fetchPosts({
+        offset: loadedCount,
+        limit: POSTS_PER_LOAD,
+        categorySlug: selectedCategory || undefined,
       })
-      .catch(() => {
-        setLoading(false)
+
+      setPosts((previousPosts) => [
+        ...previousPosts,
+        ...result.posts,
+      ])
+
+      const newLoadedCount = loadedCount + result.posts.length
+
+      setLoadedCount(newLoadedCount)
+      setTotal(result.total)
+      setHasMore(newLoadedCount < result.total)
+
+      // Avoid an endless load-more state if Sanity returns no additional posts.
+      if (result.posts.length === 0) {
         setHasMore(false)
-      })
+      }
+    } catch (error) {
+      console.error(
+        '[Sanity] Failed to load more blog posts:',
+        error
+      )
+
+      setHasMore(false)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify({
-          '@context': 'https://schema.org',
-          '@type': 'Blog',
-          name: 'Keith Koki Blog',
-          description: 'Deep-dive articles on product strategy, software engineering, AI governance, and technical leadership.',
-          url: 'https://keithkoki.com/blogs',
-          author: {
-            '@type': 'Person',
-            name: 'Keith Koki',
-            url: 'https://keithkoki.com',
-            sameAs: [
-              'https://www.linkedin.com/in/keith-koki-669782240/',
-              'https://github.com/Keith-koki77/',
-              'https://x.com/KeithKoki3980',
-              'https://substack.com/@keithkoki',
-            ],
-          },
-          publisher: {
-            '@type': 'Organization',
-            name: 'Keith Koki',
-            logo: {
-              '@type': 'ImageObject',
-              url: 'https://keithkoki.com/logo.png',
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Blog',
+            name: 'Keith Koki Blog',
+            description:
+              'Deep-dive articles on product strategy, software engineering, AI governance, and technical leadership.',
+            url: 'https://keithkoki.com/blogs',
+            author: {
+              '@type': 'Person',
+              name: 'Keith Koki',
+              url: 'https://keithkoki.com',
+              sameAs: [
+                'https://www.linkedin.com/in/keith-koki-669782240/',
+                'https://github.com/Keith-koki77/',
+                'https://x.com/KeithKoki3980',
+                'https://substack.com/@keithkoki',
+              ],
             },
-          },
-          blogPosts: [],
-        }) }}
+            publisher: {
+              '@type': 'Organization',
+              name: 'Keith Koki',
+              logo: {
+                '@type': 'ImageObject',
+                url: 'https://keithkoki.com/logo.png',
+              },
+            },
+            blogPosts: [],
+          }),
+        }}
       />
-      <main className="min-h-screen bg-[var(--color-ivory-silk)] relative overflow-hidden" id="blogs">
-        <div className="absolute inset-0 -z-10" aria-hidden="true">
+
+      <main
+        className="min-h-screen bg-[var(--color-ivory-silk)] relative overflow-hidden"
+        id="blogs"
+      >
+        <div
+          className="absolute inset-0 -z-10"
+          aria-hidden="true"
+        >
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full bg-[var(--color-ochre-brushed)]/5 blur-[200px]" />
+
           <div className="absolute bottom-0 right-0 w-[600px] h-[600px] rounded-full bg-[var(--color-aubergine-deep)]/5 blur-[200px]" />
+
           <div className="absolute top-1/2 left-0 w-[400px] h-[400px] rounded-full bg-[var(--color-aubergine-deep)]/5 blur-[200px]" />
         </div>
 
@@ -185,45 +307,56 @@ export default function BlogClient() {
 
           <header className="text-center mb-12 lg:mb-16">
             <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-[var(--color-ochre-brushed)]/10 text-[var(--color-ochre-brushed)] text-sm font-medium uppercase tracking-wider mb-8">
-              <SparklesIcon className="w-4 h-4" aria-hidden="true" />
-              <span>Insights & Analysis</span>
+              <SparklesIcon
+                className="w-4 h-4"
+                aria-hidden="true"
+              />
+              <span>Insights &amp; Analysis</span>
             </div>
+
             <h1 className="font-display font-semibold text-editorial-lg lg:text-editorial-xl text-[var(--color-aubergine-deep)] mb-8 leading-tight text-balance max-w-3xl mx-auto">
               Blog
             </h1>
+
             <p className="font-script text-xl lg:text-2xl text-[var(--color-aubergine-deep)]/70 leading-relaxed text-balance max-w-2xl mx-auto">
-              Deep-dive analysis on product strategy, engineering leadership, AI governance, and the intersection of technology and business.
+              Deep-dive analysis on product strategy, engineering
+              leadership, AI governance, and the intersection of
+              technology and business.
             </p>
           </header>
 
           {/* Category Filter Tabs */}
           {!loadingCategories && categories.length > 0 && (
-            <div className="mb-12 flex flex-wrap gap-2 justify-center" role="tablist" aria-label="Blog categories">
+            <div
+              className="mb-12 flex flex-wrap gap-2 justify-center"
+              role="tablist"
+              aria-label="Blog categories"
+            >
               <button
                 role="tab"
                 aria-selected={!selectedCategory}
                 onClick={() => setSelectedCategory(null)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                  !selectedCategory
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${!selectedCategory
                     ? 'bg-[var(--color-ochre-brushed)] text-[var(--color-aubergine-core)]'
                     : 'bg-white border border-[var(--color-aubergine-border)]/10 hover:border-[var(--color-ochre-brushed)]/30 hover:bg-[var(--color-ivory-surface)]'
-                }`}
+                  }`}
               >
                 All
               </button>
+
               {categories.map((cat) => (
                 <button
                   key={cat.slug}
                   role="tab"
                   aria-selected={selectedCategory === cat.slug}
                   onClick={() => setSelectedCategory(cat.slug)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                    selectedCategory === cat.slug
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${selectedCategory === cat.slug
                       ? 'bg-[var(--color-ochre-brushed)] text-[var(--color-aubergine-core)]'
                       : 'bg-white border border-[var(--color-aubergine-border)]/10 hover:border-[var(--color-ochre-brushed)]/30 hover:bg-[var(--color-ivory-surface)]'
-                  }`}
+                    }`}
                 >
                   {cat.title}
+
                   <span className="ml-2 px-1.5 py-0.5 text-xs bg-[var(--color-aubergine-border)]/20 rounded-full">
                     {cat.count}
                   </span>
@@ -232,11 +365,16 @@ export default function BlogClient() {
             </div>
           )}
 
+          {/* Loading Skeleton */}
           {loading && posts.length === 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {Array.from({ length: 6 }).map((_, i) => (
-                <article key={i} className="animate-pulse rounded-xl bg-white border border-[var(--color-aubergine-border)]/10 overflow-hidden">
+                <article
+                  key={i}
+                  className="animate-pulse rounded-xl bg-white border border-[var(--color-aubergine-border)]/10 overflow-hidden"
+                >
                   <div className="aspect-video bg-[var(--color-aubergine-border)]/10" />
+
                   <div className="p-6 space-y-4">
                     <div className="h-4 bg-[var(--color-aubergine-border)]/10 rounded w-1/4" />
                     <div className="h-6 bg-[var(--color-aubergine-border)]/10 rounded w-3/4" />
@@ -248,7 +386,12 @@ export default function BlogClient() {
             </div>
           ) : posts.length > 0 ? (
             <>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12" role="list" aria-label="Blog posts">
+              {/* Blog Posts */}
+              <div
+                className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12"
+                role="list"
+                aria-label="Blog posts"
+              >
                 {posts.map((post) => (
                   <article
                     key={post.slug}
@@ -262,13 +405,21 @@ export default function BlogClient() {
                         aria-label={`Read: ${post.title}`}
                       >
                         <img
-                          src={urlFor(post.mainImage)?.width(800).height(450).quality(85).auto('format').url() || ''}
+                          src={
+                            urlFor(post.mainImage)
+                              .width(800)
+                              .height(450)
+                              .quality(85)
+                              .auto('format')
+                              .url()
+                          }
                           alt={post.mainImage.alt || post.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                           loading="lazy"
                         />
                       </Link>
                     )}
+
                     <div className="p-6 space-y-4">
                       <div className="flex flex-wrap gap-2">
                         {post.categories?.slice(0, 2).map((cat) => (
@@ -281,26 +432,41 @@ export default function BlogClient() {
                           </Link>
                         ))}
                       </div>
+
                       <Link href={`/blogs/${post.slug}`}>
                         <h2 className="font-display font-semibold text-xl lg:text-2xl text-[var(--color-aubergine-deep)] group-hover:text-[var(--color-ochre-brushed)] transition-colors line-clamp-2">
                           {post.title}
                         </h2>
                       </Link>
+
                       <p className="text-[var(--color-obsidian-text)]/60 leading-relaxed line-clamp-3">
                         {post.excerpt}
                       </p>
+
                       <div className="flex items-center gap-4 text-sm text-[var(--color-obsidian-text)]/50 pt-4 border-t border-[var(--color-aubergine-border)]/10">
                         <time dateTime={post.publishedAt}>
-                          <CalendarIcon className="w-4 h-4 inline mr-1" aria-hidden="true" />
-                          {new Date(post.publishedAt).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })}
+                          <CalendarIcon
+                            className="w-4 h-4 inline mr-1"
+                            aria-hidden="true"
+                          />
+
+                          {new Date(post.publishedAt).toLocaleDateString(
+                            'en-US',
+                            {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            }
+                          )}
                         </time>
+
                         <span>
-                          <ClockIcon className="w-4 h-4 inline mr-1" aria-hidden="true" />
-                          {Math.ceil((post.excerpt?.length || 0) / 200)} min read
+                          <ClockIcon
+                            className="w-4 h-4 inline mr-1"
+                            aria-hidden="true"
+                          />
+                          {Math.ceil((post.excerpt?.length || 0) / 200)} min
+                          read
                         </span>
                       </div>
                     </div>
@@ -318,16 +484,36 @@ export default function BlogClient() {
                   >
                     {loading ? (
                       <>
-                        <svg className="animate-spin h-5 w-5 text-[var(--color-ochre-brushed)]" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        <svg
+                          className="animate-spin h-5 w-5 text-[var(--color-ochre-brushed)]"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            fill="none"
+                          />
+
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                          />
                         </svg>
+
                         Loading more...
                       </>
                     ) : (
                       <>
                         Load more articles
-                        <ChevronDownIcon className="w-5 h-5" aria-hidden="true" />
+                        <ChevronDownIcon
+                          className="w-5 h-5"
+                          aria-hidden="true"
+                        />
                       </>
                     )}
                   </button>
@@ -342,21 +528,32 @@ export default function BlogClient() {
           ) : (
             <section className="text-center py-24">
               <div className="max-w-xl mx-auto">
-                <SparklesIcon className="w-16 h-16 mx-auto mb-6 text-[var(--color-ochre-brushed)]/50" aria-hidden="true" />
+                <SparklesIcon
+                  className="w-16 h-16 mx-auto mb-6 text-[var(--color-ochre-brushed)]/50"
+                  aria-hidden="true"
+                />
+
                 <h2 className="font-display font-semibold text-2xl lg:text-3xl text-[var(--color-aubergine-deep)] mb-4">
-                  {selectedCategory ? 'No articles in this category yet' : 'No articles yet'}
+                  {selectedCategory
+                    ? 'No articles in this category yet'
+                    : 'No articles yet'}
                 </h2>
+
                 <p className="text-[var(--color-obsidian-text)]/60 leading-relaxed mb-8">
-                  {selectedCategory 
+                  {selectedCategory
                     ? 'Check back soon for articles in this category.'
                     : 'Articles on product strategy, engineering leadership, and AI governance are coming soon.'}
                 </p>
+
                 <Link
                   href="/advisory"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[var(--color-ochre-brushed)] text-[var(--color-aubergine-core)] font-semibold hover:bg-[var(--color-ochre-champagne)] transition-colors"
                 >
                   Explore advisory services
-                  <ArrowRightIcon className="w-5 h-5" aria-hidden="true" />
+                  <ArrowRightIcon
+                    className="w-5 h-5"
+                    aria-hidden="true"
+                  />
                 </Link>
               </div>
             </section>
@@ -365,8 +562,4 @@ export default function BlogClient() {
       </main>
     </>
   )
-}
-
-function loadMore() {
-  // This is intentionally left empty - the actual function is inside the component
 }

@@ -116,7 +116,7 @@ const RECENT_POSTS_QUERY = `*[_type == "post" && defined(slug.current)]
   | order(publishedAt desc)[0...8]{
   _id,
   title,
-  slug,
+  "slug": slug.current,
   publishedAt,
   mainImage {
     alt,
@@ -171,11 +171,24 @@ const getImageUrl = (source: any, width = 1400) => {
 export async function generateStaticParams() {
   try {
     const slugs = await getBlogPostSlugs()
-    if (!Array.isArray(slugs)) return []
-    return slugs.map((slug: string) => ({ slug }))
+
+    console.log(
+      `[Sanity] Found ${slugs.length} blog posts for static generation:`,
+      slugs
+    )
+
+    return slugs.map((slug: string) => ({
+      slug,
+    }))
   } catch (error) {
-    console.warn('generateStaticParams failed:', error)
-    return []
+    console.error(
+      '[Sanity] generateStaticParams failed:',
+      error
+    )
+
+    // Fail the build rather than silently deploying
+    // without the expected blog article pages.
+    throw error
   }
 }
 
