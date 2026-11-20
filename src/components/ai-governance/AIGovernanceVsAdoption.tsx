@@ -38,7 +38,7 @@ export function AIGovernanceVsAdoption() {
                     <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-ochre-brushed/20 text-ochre-brushed font-sans font-bold text-sm">
                       {index + 1}
                     </span>
-                    <p className="text-ivory-surface leading-relaxed">{item.adoption}</p>
+                    <p className="text-obsidian-text leading-relaxed">{item.adoption}</p>
                   </li>
                 ))}
               </ul>
@@ -53,7 +53,7 @@ export function AIGovernanceVsAdoption() {
                     <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-ochre-brushed/20 text-ochre-brushed font-sans font-bold text-sm">
                       {index + 1}
                     </span>
-                    <p className="text-ivory-surface leading-relaxed">{item.governance}</p>
+                    <p className="text-obsidian-text leading-relaxed">{item.governance}</p>
                   </li>
                 ))}
               </ul>
